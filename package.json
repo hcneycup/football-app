@@ -1,0 +1,18 @@
+{
+    "name": "your-daily-football-tracker",
+    "version": "1.0.0",
+    "description": "A desktop app for live football matches",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Your Name <your.email@example.com>",
+    "license": "MIT",
+    "devDependencies": {
+        "electron": "^28.0.0"
+    },
+    "dependencies": {
+        "dotenv": "^17.2.1"
+    }
+}

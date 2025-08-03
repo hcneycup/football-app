@@ -1,0 +1,521 @@
+/* Football Break - PS1 Style CSS */
+
+@font-face {
+    font-family: 'Maestro-Regular';
+    src: url('font/Maesto-Regular_demo.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'ByteBounce';
+    src: url('font/bytebounce/ByteBounce.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'GameStationDisplay';
+    src: url('font/GamestationDisplay-zexG.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Arcade-Classic';
+    src: url('font/arcadeclassic/ARCADECLASSIC.TTF') format('truetype');
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Maestro-Regular', monospace;
+    background-image: url('football-team-icon/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    image-rendering: pixelated;
+}
+
+body,
+html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.app-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.1);
+    overflow-x: hidden;
+}
+
+/* reserve space for footer */
+.header {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    border-bottom: 3px solid #2d5a2d;
+    padding: 8px 0;
+    /* REMOVE side padding */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    margin: 0;
+}
+
+.header-text {
+    font-size: 32px;
+    font-weight: bold;
+}
+
+.fake-x {
+    font-family: monospace;
+    font-size: 20px;
+    font-weight: bold;
+    color: #000;
+    background-color: #ffdada;
+    padding: 2px 6px;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    cursor: default;
+    text-align: center;
+    line-height: 1;
+}
+
+.header-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.header h1 {
+    color: black;
+    font-size: 35px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.emoji-icon {
+    width: 32px;
+    margin-left: 12px;
+    vertical-align: middle;
+    image-rendering: pixelated;
+}
+
+.matches-container {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 120px;
+}
+
+.matches-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.matches-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.matches-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.matches-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Date & Time */
+.date-time {
+    text-align: center;
+    font-size: 12px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-family: 'ByteBounce', monospace;
+    position: relative;
+    z-index: 2;
+    position: sticky;
+    bottom: 0;
+
+}
+
+/* No matches popup */
+.centered-wrapper {
+    /* existing styles */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100%;
+    display: none;
+    /* stays hidden by default */
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    background: none;
+    pointer-events: none;
+    /* disable clicks by default */
+}
+
+#noMatchesMessage {
+    display: none;
+    pointer-events: auto;
+    /* enable interaction for the popup itself */
+}
+
+#noMatchesWrapper {
+    visibility: hidden;
+    /* ADD THIS */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#noMatchesWrapper.show {
+    visibility: visible;
+    /* ADD THIS */
+    opacity: 1;
+}
+
+.no-matches-window {
+    width: 340px;
+    margin: 40px auto;
+    box-shadow: 3px 3px 0 #000, 6px 6px 0 #000, 9px 9px 0 #000;
+    background-color: #fff8dc;
+    font-family: 'Maestro-Regular', monospace;
+    image-rendering: pixelated;
+    position: relative;
+    border: 4px solid #000;
+    padding: 0;
+}
+
+
+.no-matches-header {
+    background-color: #ff5f4f;
+    color: #000;
+    font-weight: bold;
+    font-size: 20px;
+    padding: 12px 16px;
+    border-bottom: 4px solid #000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.error-code {
+    font-size: 32px;
+    font-family: 'Maestro Regular', monospace;
+    margin-right: 10px;
+}
+
+.error-icon {
+    width: 32px;
+    height: auto;
+    image-rendering: pixelated;
+}
+
+.no-matches-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 40px 16px 20px;
+    background-color: #fff8dc;
+    font-family: 'Maestro-Regular', monospace;
+    width: 300px;
+    margin: auto;
+    image-rendering: pixelated;
+}
+
+@keyframes slideY {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+.no-match-image {
+    width: 35px;
+    height: auto;
+    image-rendering: pixelated;
+}
+
+
+.no-matches-message h2 {
+    font-size: 20px;
+    font-family: 'ByteBounce', monospace;
+    src: url('font/bytebounce/ByteBounce.ttf') format('truetype');
+    font-weight: bold;
+    margin-bottom: 16px;
+    color: #000;
+}
+
+.no-matches-message p,
+.next-check {
+    font-family: 'ByteBounce', monospace;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.next-check {
+    font-size: 12px;
+    color: #777;
+    font-style: italic;
+    margin-top: 16px;
+    padding-top: 10px;
+    font-family: 'ByteBounce', monospace;
+    src: url('font/bytebounce/ByteBounce.ttf') format('truetype');
+}
+
+.football-icon {
+    font-size: 48px;
+    animation: bounce 2s infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Match cards */
+.match-card {
+    width: 90%;
+    max-width: 700px;
+    transition: transform 0.15s ease, background 0.15s ease;
+    margin: 10px auto;
+    background-color: #fff8dc;
+    border: 4px solid #000;
+    box-shadow: 3px 3px 0 #000, 6px 6px 0 #000;
+    font-family: 'Maestro-Regular', monospace;
+    padding: 16px;
+    image-rendering: pixelated;
+    cursor: pointer;
+}
+
+.match-card:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 1);
+}
+
+.match-card.live {
+    border-left-color: #dc3545;
+    background: rgba(255, 245, 245, 0.95);
+}
+
+.match-card.finished {
+    border-left-color: #28a745;
+}
+
+.match-card.scheduled {
+    border-left-color: #007bff;
+}
+
+.match-card.paused {
+    border-left-color: #ffc107;
+}
+
+.match-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.competition {
+    font-size: 11px;
+    font-family: 'GameStationDisplay', sans-serif;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.match-status {
+    font-size: 11px;
+    font-family: 'Arcade-Classic', sans-serif;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 6px;
+    text-transform: uppercase;
+}
+
+.match-score {
+    font-weight: bold;
+    font-size: 1.2em;
+    color: #333;
+    min-width: 60px;
+    text-align: center;
+}
+
+.match-status.live {
+    background: #dc3545;
+    color: white;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.match-status.finished {
+    background: #28a745;
+    color: white;
+}
+
+.match-status.scheduled {
+    background: #007bff;
+    color: white;
+}
+
+.match-status.paused {
+    background: #ffc107;
+    color: #000;
+}
+
+.match-teams {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 40px;
+    padding: 10px 0;
+}
+
+.team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 40%;
+}
+
+.team-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+}
+
+.team-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.team-name {
+    font-size: 12px;
+    font-family: 'GameStationDisplay', sans-serif;
+    font-weight: 500;
+    color: #333;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.team-score {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.vs {
+    font-size: 10px;
+    color: #999;
+    font-weight: bold;
+    margin: 0 8px;
+}
+
+.refresh-wrapper {
+    position: sticky;
+    bottom: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+    z-index: 10;
+}
+
+.refresh-button {
+    background-color: #fef6d8;
+    border: 3px solid black;
+    box-shadow: 3px 3px 0 #000;
+    font-weight: bold;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    padding: 6px 14px;
+    cursor: pointer;
+    z-index: 5;
+}
+
+.refresh-button:hover {
+    background-color: #f1eac0;
+}
+
+.last-updated-label {
+    font-size: 13px;
+    font-weight: bold;
+    color: #000;
+    font-family: 'Courier New', monospace;
+}
+
+
+/* Yesterday Header */
+.yesterday-header {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.yesterday-badge {
+    background: #ffc107;
+    color: #000;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+    .team-name {
+        font-size: 10px;
+    }
+
+    .team-score {
+        font-size: 14px;
+    }
+
+    .match-card {
+        padding: 10px;
+    }
+}
