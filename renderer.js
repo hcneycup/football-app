@@ -1,10 +1,16 @@
-// Football Break App - Final Version
 const { ipcRenderer } = require('electron');
 let matchesData = [];
 let autoRefreshInterval;
-const competitions = ['PL', 'BL1', 'PD', 'CL', 'BSA'];
+let isLoading = false;
 
-// API Key from football-data.org
+const leagues = {
+    'PL': 39,     // Premier League
+    'BL1': 78,    // Bundesliga  
+    'PD': 140,    // La Liga
+    'CL': 2,      // Champions League
+    'Serie A': 71, // Serie A
+};
+
 let API_KEY;
 
 async function initializeApp() {
@@ -18,110 +24,122 @@ async function initializeApp() {
         showNoMatchesMessage();
     }
 }
-// Add these variables at the top of your file (outside any functions)
+
 let lastFetchTime = 0;
 let cachedMatches = [];
-const CACHE_DURATION = 120000; // 2 minutes in milliseconds
+const CACHE_DURATION = 120000;
 
-// Helper function to check if there are live matches
 function hasLiveMatches(matches) {
     return matches.some(match =>
-        match.status === 'IN_PLAY' ||
-        match.status === 'PAUSED' ||
-        match.status === 'LIVE' ||
-        match.status === 'HALF_TIME'
+        match.fixture?.status?.short === '1H' ||
+        match.fixture?.status?.short === '2H' ||
+        match.fixture?.status?.short === 'HT' ||
+        match.fixture?.status?.short === 'ET' ||
+        match.fixture?.status?.short === 'PEN'
     );
 }
 
 async function loadTodaysMatches() {
-    const today = new Date().toISOString().split('T')[0];
-    const now = Date.now();
-
-    // Only use cached data if:
-    // 1. Cache is recent AND
-    // 2. There are NO live matches (to avoid missing live updates)
-    const shouldUseCache = cachedMatches.length > 0 &&
-        (now - lastFetchTime) < CACHE_DURATION &&
-        !hasLiveMatches(cachedMatches);
-
-    if (shouldUseCache) {
-        console.log('Using cached data (no live matches)');
-        hideNoMatchesMessage();
-        displayMatches(cachedMatches);
-        updateLastUpdatedTime();
+    if (isLoading) {
+        console.log('⏳ Already loading, skipping...');
         return;
     }
+    isLoading = true;
 
-    hideNoMatchesMessage();
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const now = Date.now();
 
-    let totalMatches = 0;
-    let allMatches = [];
-    let hasRateLimit = false;
+        const shouldUseCache = cachedMatches.length > 0 &&
+            (now - lastFetchTime) < CACHE_DURATION &&
+            !hasLiveMatches(cachedMatches);
 
-    for (const comp of competitions) {
-        try {
-            const url = `https://api.football-data.org/v4/competitions/${comp}/matches?dateFrom=${today}&dateTo=${today}`;
-
-            const res = await fetch(url, {
-                headers: { 'X-Auth-Token': API_KEY }
-            });
-
-            if (res.status === 429) {
-                console.log('Rate limit reached for competition:', comp);
-                hasRateLimit = true;
-                continue; // Skip this competition but continue with others
-            }
-
-            if (!res.ok) {
-                const errorText = await res.text();
-                console.error('API Error:', res.status, errorText);
-                throw new Error(`Error: ${res.status}`);
-            }
-
-            const data = await res.json();
-            const todayMatches = data.matches;
-
-            if (todayMatches && todayMatches.length > 0) {
-                allMatches = allMatches.concat(todayMatches);
-                totalMatches += todayMatches.length;
-            }
-
-        } catch (err) {
-            console.error('Error loading matches:', err);
+        if (shouldUseCache) {
+            console.log('Using cached data (no live matches)');
+            hideNoMatchesMessage();
+            displayMatches(cachedMatches);
+            updateLastUpdatedTime();
+            return;
         }
-    }
 
-    // If we got new data, update cache and display
-    if (totalMatches > 0) {
-        cachedMatches = allMatches;
-        lastFetchTime = now;
-        displayMatches(allMatches);
-        console.log('Displaying fresh data');
-    }
-    // If we hit rate limits but have cached data, use it
-    else if (hasRateLimit && cachedMatches.length > 0) {
-        console.log('Rate limited - displaying cached matches');
-        displayMatches(cachedMatches);
-    }
-    // If no new data and no cached data, show no matches
-    else if (cachedMatches.length === 0) {
-        showNoMatchesMessage();
-    }
-    // If we have cached data but no new data (and no rate limit), keep showing cached
-    else {
-        displayMatches(cachedMatches);
-    }
+        let totalMatches = 0;
+        let allMatches = [];
+        let hasRateLimit = false;
 
-    updateLastUpdatedTime();
+        for (const [leagueName, leagueId] of Object.entries(leagues)) {
+            try {
+                const url = `https://v3.football.api-sports.io/fixtures?league=${leagueId}&date=${today}`;
+                const res = await fetch(url, {
+                    headers: {
+                        'X-RapidAPI-Key': API_KEY,
+                        'X-RapidAPI-Host': 'v3.football.api-sports.io'
+                    }
+                });
+
+                if (res.status === 429) {
+                    console.log('Rate limit reached for league:', leagueName);
+                    hasRateLimit = true;
+                    continue;
+                }
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('API Error:', res.status, errorText);
+                    throw new Error(`Error: ${res.status}`);
+                }
+
+                const data = await res.json();
+                const todayMatches = data.response || [];
+
+                if (todayMatches && todayMatches.length > 0) {
+                    allMatches = allMatches.concat(todayMatches);
+                    totalMatches += todayMatches.length;
+                }
+
+            } catch (err) {
+                console.error('Error loading matches:', err);
+            }
+        }
+
+        if (totalMatches > 0) {
+            hideNoMatchesMessage();
+            cachedMatches = allMatches;
+            lastFetchTime = now;
+            displayMatches(allMatches);
+            console.log('Displaying fresh data');
+        }
+        else if (hasRateLimit && cachedMatches.length > 0) {
+            console.log('Rate limited - displaying cached matches');
+            hideNoMatchesMessage();
+            displayMatches(cachedMatches);
+        }
+        else if (cachedMatches.length > 0) {
+            hideNoMatchesMessage();
+            displayMatches(cachedMatches);
+        }
+        else {
+            showNoMatchesMessage();
+        }
+
+        updateLastUpdatedTime();
+
+    } finally {
+        isLoading = false;
+    }
 }
 
 function showNoMatchesMessage() {
     const wrapper = document.getElementById('noMatchesWrapper');
+    const message = document.getElementById('noMatchesMessage');
+
     if (wrapper) {
         wrapper.style.display = 'flex';
         requestAnimationFrame(() => {
             wrapper.classList.add('show');
         });
+    }
+    if (message) {
+        message.style.display = 'block';
     }
 }
 
@@ -138,7 +156,7 @@ function hideNoMatchesMessage() {
     if (popup) popup.style.display = 'none';
 }
 
-function displayMatches(matches, isYesterday = false) {
+function displayMatches(matches) {
     const container = document.querySelector('.matches-container');
     const popupWrapper = document.getElementById('noMatchesWrapper');
     const popup = document.getElementById('noMatchesMessage');
@@ -152,18 +170,14 @@ function displayMatches(matches, isYesterday = false) {
 
     let html = '';
 
-    if (isYesterday) {
-        html += `<div class="yesterday-header"><span class="yesterday-badge">Yesterday's Results</span></div>`;
-    }
-
     matches.forEach(match => {
-        const home = match.homeTeam.name;
-        const away = match.awayTeam.name;
-        const homeScore = match.score?.fullTime?.home ?? '-';
-        const awayScore = match.score?.fullTime?.away ?? '-';
-        const comp = match.competition.name;
+        const home = match.teams?.home?.name || 'Unknown';
+        const away = match.teams?.away?.name || 'Unknown';
+        const homeScore = match.goals?.home ?? '-';
+        const awayScore = match.goals?.away ?? '-';
+        const comp = match.league?.name || 'Unknown Competition';
 
-        const kickoff = new Date(match.utcDate).toLocaleTimeString('en-GB', {
+        const kickoff = new Date(match.fixture?.date).toLocaleTimeString('en-GB', {
             hour: '2-digit',
             minute: '2-digit'
         });
@@ -171,19 +185,31 @@ function displayMatches(matches, isYesterday = false) {
         let statusText;
         let statusClass;
 
-        switch (match.status) {
-            case 'IN_PLAY':
+        const status = match.fixture?.status?.short;
+        switch (status) {
+            case '1H':
+            case '2H':
                 statusText = 'LIVE';
                 statusClass = 'live';
                 break;
-            case 'PAUSED':
+            case 'HT':
                 statusText = 'HT';
                 statusClass = 'paused';
                 break;
-            case 'FINISHED':
+            case 'FT':
+            case 'AET':
+            case 'PEN':
                 statusText = 'FT';
                 statusClass = 'finished';
                 break;
+            case 'PST':
+            case 'CANC':
+            case 'ABD':
+                statusText = 'CANC';
+                statusClass = 'cancelled';
+                break;
+            case 'NS':
+            case 'TBD':
             default:
                 statusText = kickoff;
                 statusClass = 'scheduled';
@@ -198,7 +224,7 @@ function displayMatches(matches, isYesterday = false) {
                 <div class="match-teams">
                     <div class="team">
                         <div class="team-info">
-                            ${getTeamLogo(home, match.competition.code)}
+                            ${getTeamLogo(match.teams.home)}
                             <span class="team-name">${home}</span>
                         </div>
                     </div>
@@ -207,11 +233,12 @@ function displayMatches(matches, isYesterday = false) {
                     </div>
                     <div class="team">
                         <div class="team-info">
-                            ${getTeamLogo(away, match.competition.code)}
+                            ${getTeamLogo(match.teams.away)}
                             <span class="team-name">${away}</span>
                         </div>
                     </div>
                 </div>
+                ${getMatchCards(match)}
             </div>
         `;
     });
@@ -236,12 +263,6 @@ const clubLogos = {
     'Inter': '<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/FC_Internazionale_Milano_2021.svg/2048px-FC_Internazionale_Milano_2021.svg.png" alt="Inter Milan" class="team-icon">',
     'AS Roma': '<img src="https://upload.wikimedia.org/wikipedia/en/thumb/f/f7/AS_Roma_logo_%282017%29.svg/1200px-AS_Roma_logo_%282017%29.svg.png" alt="AS Roma" class="team-icon">',
     'PSG': '<img src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Paris_Saint-Germain_F.C..svg/1200px-Paris_Saint-Germain_F.C..svg.png" alt="Paris Saint-Germain" class="team-icon">',
-    'SC Recife': '<img src="https://upload.wikimedia.org/wikipedia/en/thumb/4/45/Sport_Club_Recife.svg/1200px-Sport_Club_Recife.svg.png" alt="SC Recife" class="team-icon">',
-    'EC Bahia': '<img src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Esporte_Clube_Bahia_logo.svg/1200px-Esporte_Clube_Bahia_logo.svg.png" alt="EC Bahia" class="team-icon">',
-    'Mirassol FC': '<img src="https://upload.wikimedia.org/wikipedia/commons/5/5b/Mirassol_FC_logo.png" alt="Mirassol FC" class="team-icon">',
-    'CR Vasco da Gama': '<img src="https://upload.wikimedia.org/wikipedia/en/0/03/CR_Vasco_da_Gama_2021_logo.png" alt="CR Vasco da Gama" class="team-icon">',
-    'Fluminense FC': '<img src="https://upload.wikimedia.org/wikipedia/commons/a/ad/Fluminense_FC_escudo.png" alt="Fluminense FC" class="team-icon">',
-    'Grêmio FBPA': '<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Gremio_logo.svg/1200px-Gremio_logo.svg.png" alt="Grêmio FBPA" class="team-icon">',
     'Aston Villa': '<img src="https://logodownload.org/wp-content/uploads/2019/10/aston-villa-logo.png" alt="Aston Villa" class="team-icon">',
     'Leverkusen': '<img src="https://upload.wikimedia.org/wikipedia/en/thumb/5/59/Bayer_04_Leverkusen_logo.svg/1200px-Bayer_04_Leverkusen_logo.svg.png" alt="Leverkusen" class="team-icon">',
     'Newcastle': '<img src="https://upload.wikimedia.org/wikipedia/hif/2/25/Newcastle_United_Logo.png" alt="Newcastle" class="team-icon">',
@@ -307,19 +328,112 @@ const countryFlags = {
     'Ecuador': '<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Flag_of_Ecuador.svg/2560px-Flag_of_Ecuador.svg.png" alt="Ecuador" class="team-icon">'
 };
 
-function getTeamLogo(name, competitionCode) {
-    const isNational = ['EC', 'WC'].includes(competitionCode);
-    const cleanedName = name.trim();
-
-    if (isNational) {
-        return countryFlags[cleanedName] || '⚽️';
-    } else {
-        return clubLogos[cleanedName] || '⚽️';
+function getTeamLogo(teamData) {
+    if (teamData?.logo) {
+        return `<img src="${teamData.logo}" alt="${teamData.name}" class="team-icon">`;
     }
+
+    const cleanedName = teamData?.name?.trim() || '';
+    return clubLogos[cleanedName] || '⚽️';
+}
+
+function getMatchCards(match) {
+    const status = match.fixture?.status?.short;
+    if (status !== '1H' && status !== '2H' && status !== 'HT' && status !== 'FT' && status !== 'AET') {
+        return '';
+    }
+
+    if (!match.events || match.events.length === 0) {
+        return '';
+    }
+
+    const homeCards = [];
+    const awayCards = [];
+
+    match.events.forEach(event => {
+        if (event.type === 'Card') {
+            const isHome = event.team?.name === match.teams?.home?.name;
+            const fullName = event.player?.name || 'Unknown';
+            const lastName = fullName.split(' ').pop();
+            const minute = event.time?.elapsed || '?';
+
+            const cardIcon = event.detail === 'Yellow Card' ?
+                '<div class="pixel-card yellow-pixel-card"></div>' :
+                '<div class="pixel-card red-pixel-card"></div>';
+
+            const cardInfo = `${cardIcon} ${lastName} ${minute}'`;
+
+            if (isHome) {
+                homeCards.push(cardInfo);
+            } else {
+                awayCards.push(cardInfo);
+            }
+        }
+    });
+
+    if (homeCards.length === 0 && awayCards.length === 0) {
+        return '';
+    }
+
+    return `
+        <div class="match-cards">
+            <div class="team-cards home-cards">
+                ${homeCards.map(card => `<div class="card-item">${card}</div>`).join('')}
+            </div>
+            <div class="vs-divider"></div>
+            <div class="team-cards away-cards">
+                ${awayCards.map(card => `<div class="card-item">${card}</div>`).join('')}
+            </div>
+        </div>
+    `;
 }
 
 function showMatchDetails(home, away, comp) {
-    alert(`${comp}\n${home} vs ${away}\n\nUpdates every minute.`);
+    const matchData = cachedMatches.find(match =>
+        match.teams.home.name === home && match.teams.away.name === away
+    );
+
+    let details = `${comp}\n${home} vs ${away}\n\n`;
+
+    if (matchData) {
+        const kickoff = new Date(matchData.fixture?.date).toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const status = matchData.fixture?.status?.short;
+        const homeScore = matchData.goals?.home ?? '-';
+        const awayScore = matchData.goals?.away ?? '-';
+
+        details += `Score: ${homeScore} - ${awayScore}\n`;
+        details += `Status: ${status} | Kick-off: ${kickoff}\n\n`;
+
+        if (matchData.events && matchData.events.length > 0) {
+            details += "MATCH EVENTS:\n";
+            details += "─────────────\n";
+
+            matchData.events.forEach(event => {
+                const minute = event.time?.elapsed || '?';
+                const eventIcon = getEventIcon(event.type, event.detail);
+                const playerName = event.player?.name || 'Unknown';
+                const teamName = event.team?.name === home ? home : away;
+
+                details += `${minute}' ${eventIcon} ${playerName} (${teamName})\n`;
+            });
+        } else {
+            details += "No events yet\n";
+        }
+    }
+
+    details += `\nUpdates every minute.`;
+    alert(details);
+}
+
+function getEventIcon(type, detail) {
+    if (type === "Goal") return "⚽";
+    if (type === "Card" && detail === "Yellow Card") return '<div class="pixel-card yellow-pixel-card"></div>';
+    if (type === "Card" && detail === "Red Card") return '<div class="pixel-card red-pixel-card"></div>';
+    if (type === "subst") return "🔄";
+    return "📝";
 }
 
 function updateDateTime() {
@@ -356,12 +470,10 @@ function setupUI() {
         });
     }
 
-    // Update time display every 30 seconds
     setInterval(updateDateTime, 30 * 1000);
 }
 
 function startAutoRefresh() {
-    // Auto-refresh match data every 60 seconds
     autoRefreshInterval = setInterval(() => {
         loadTodaysMatches();
         updateDateTime();
@@ -369,10 +481,8 @@ function startAutoRefresh() {
     }, 60 * 1000);
 }
 
-// Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
 
-// Cleanup on window close
 window.addEventListener('beforeunload', () => {
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
 });

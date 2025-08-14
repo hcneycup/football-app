@@ -26,7 +26,6 @@ function createWindow() {
 
     mainWindow.loadFile('index.html');
 
-    // Show window when ready
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
     });
