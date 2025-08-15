@@ -1,13 +1,12 @@
-
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 let mainWindow;
 
-ipcMain.handle('get-api-key', () => {
-    return process.env.API_KEY;
+ipcMain.handle('get-api-key', async () => {
+    return (process.env.FOOTBALLDATA_KEY || '').trim();
 });
 
 function createWindow() {
@@ -48,5 +47,3 @@ app.on('activate', () => {
         createWindow();
     }
 });
-
-
